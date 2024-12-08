@@ -18,20 +18,21 @@
         :votes="post.votes" 
         :comp_id="post.post_id" 
         :isPost="true" 
-        @reply="toggleReplyInput"
+        @reply="toggleReply(post.post_id)"
       />
 
       <ReplyInput 
-        v-if="showReply" 
+        v-if="replyVisibility[post.post_id]"
         :parent_id="post.post_id"
         ariaLabel="Write Your Reply Here" 
         placeholder="Write Your Reply Here..."
         @cancel="hideReplyInput" 
+        @submit="handleSubmitReply"
       />
 
-      <div v-if="post.comments && post.comments.length > 0" class="post-replies">
+      <div v-if="post.replies && post.replies.length > 0" class="post-replies">
         <Comment 
-          v-for="comment in post.comments" 
+          v-for="comment in post.replies" 
           :key="comment.comment_id" 
           :reply="comment" 
         />
@@ -42,7 +43,7 @@
 
 
 <script lang="ts">
-import { computed, defineComponent, ref } from 'vue';
+import { computed, defineComponent, reactive } from 'vue';
 import ActionButtonComponent from './ActionButtonComponent.vue';
 import Comment from './Comment.vue';
 import ReplyInput from './ReplyInput.vue';
@@ -58,23 +59,36 @@ export default defineComponent({
   },
   setup() {
     const store = useStore();
-    const posts = computed(() => store.getters['posts/getPosts']);
-    const showReply = ref(false);
+    const posts = computed(() => store.getters['posts/sortedPosts']);
+    const replyVisibility = reactive<Record<number, boolean>>({});
 
-    const toggleReplyInput = () => {
-      showReply.value = !showReply.value;
+    const toggleReply = (postId: number) => {
+      replyVisibility[postId] = !replyVisibility[postId];
     };
 
-    const hideReplyInput = () => {
-      showReply.value = false;
+    const hideReplyInput = (postId: number) => {
+      replyVisibility[postId] = false;
+    };
+
+    const handleSubmitReply = async (data: {
+      content: string;
+      parent: number;
+    }) => {
+      await store.dispatch("posts/replyToComment", {
+        content: data.content,
+        parent_id: data.parent,
+        post_id: data.parent,
+      });
+      replyVisibility[data.parent] = false;
     };
 
     return {
       posts,
-      showReply,
-      toggleReplyInput,
+      replyVisibility,
+      toggleReply,
       hideReplyInput,
-      formatTime
+      handleSubmitReply,
+      formatTime,
     };
   }
 });

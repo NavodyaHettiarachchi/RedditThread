@@ -43,16 +43,23 @@
       class="nested-comments"
     >
       <Comment 
-        v-for="nestedReply in reply.replies" 
+        v-for="(nestedReply) in visibleReplies"
         :key="nestedReply.comment_id" 
         :reply="nestedReply" 
       />
+      <button
+        v-if="hasMoreReplies"
+        class="load-more-button"
+        @click="loadMoreReplies"
+      >
+        Load More Replies
+      </button>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from "vue";
+import { computed, defineComponent, ref } from "vue";
 import ActionButtonComponent from "./ActionButtonComponent.vue";
 import ReplyInput from './ReplyInput.vue';
 import { formatTime } from "../utils/timeUtilts";
@@ -74,6 +81,28 @@ export default defineComponent({
     const store = useStore();
     const showReply = ref(false);
 
+    const visibleRepliesCount = ref(2);
+
+    const visibleReplies = computed(() => {
+      return limitNestedReplies(props.reply.replies, visibleRepliesCount.value);
+    });
+
+    function limitNestedReplies(replies: any[], visibleCount: number): any[] {
+      return replies.slice(0, visibleCount).map((reply) => ({
+        ...reply,
+        replies: reply.replies ? limitNestedReplies(reply.replies, visibleCount) : [],
+      }));
+    }
+
+    const hasMoreReplies = computed(() =>
+      props.reply.replies.length > visibleRepliesCount.value
+    );
+
+
+    const loadMoreReplies = () => {
+      visibleRepliesCount.value += 2;
+    };
+
     const toggleReply = () => {
       showReply.value = !showReply.value;
     };
@@ -82,17 +111,24 @@ export default defineComponent({
       showReply.value = false;
     };
 
-    const submitInput = async (data: { content: string, parent: number } ) => {
-      await store.dispatch('posts/replyToComment', { content: data.content, parent_id: data.parent, post_id: props.reply.postId });
+    const submitInput = async (data: { content: string; parent: number }) => {
+      await store.dispatch("posts/replyToComment", {
+        content: data.content,
+        parent_id: data.parent,
+        post_id: props.reply.postId,
+      });
       showReply.value = false;
-    }
+    };
 
     return {
       showReply,
       toggleReply,
       hideReplyInput,
       submitInput,
-      formatTime
+      visibleReplies,
+      hasMoreReplies,
+      loadMoreReplies,
+      formatTime,
     };
   }
 });
@@ -124,10 +160,25 @@ export default defineComponent({
 .nested-comments {
   margin-top: 5px;
 }
+
 .comment-footer {
   display: flex;
   justify-content: flex-end;
   align-items: center;
   gap: 5px;
+}
+
+.load-more-button {
+  margin-top: 10px;
+  padding: 5px 10px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.load-more-button:hover {
+  background-color: #0056b3;
 }
 </style>

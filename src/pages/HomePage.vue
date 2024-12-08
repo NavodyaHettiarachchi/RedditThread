@@ -40,7 +40,7 @@ export default defineComponent({
         author: 'User 2',
         content: content.content,
         votes: 0,
-        comments: [],
+        replies: [],
         isDeleted: false,
         createdDateTime: new Date().toLocaleString(),
       };
